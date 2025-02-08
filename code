@@ -1,0 +1,76 @@
+import numpy as np
+import pandas as pd
+from sklearn.svm import SVC
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split
+
+# Load dataset
+df = pd.read_csv("parkinsonsdata.csv")
+
+# Feature selection and target variable
+X = df.drop(columns=['name', 'status'], axis=1)
+Y = df['status']
+
+# Split data into training and testing sets
+X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2, random_state=2)
+
+# Scale the features
+ss = StandardScaler()
+X_train = ss.fit_transform(X_train)
+X_test = ss.transform(X_test)
+
+# Train SVM model
+svm_model = SVC(kernel='linear', probability=True)
+svm_model.fit(X_train, Y_train)
+
+# Train Random Forest model
+rf_model = RandomForestClassifier(n_estimators=100, random_state=42)
+rf_model.fit(X_train, Y_train)
+
+# Train Logistic Regression model
+log_model = LogisticRegression()
+log_model.fit(X_train, Y_train)
+
+# Evaluate the models
+models = {'SVM': svm_model, 'Random Forest': rf_model, 'Logistic Regression': log_model}
+for name, model in models.items():
+    train_acc = accuracy_score(Y_train, model.predict(X_train))
+    test_acc = accuracy_score(Y_test, model.predict(X_test))
+    print(f"{name} - Train Accuracy: {train_acc:.4f}, Test Accuracy: {test_acc:.4f}")
+
+# Single function for input prediction using all models
+def predict_parkinsons(input_data):
+    # Convert input data into numpy array and reshape
+    input_data_np = np.asarray(input_data).reshape(1, -1)
+    
+    # Scale the input data
+    s_data = ss.transform(input_data_np)
+
+    # Get predictions from all models
+    svm_pred = svm_model.predict(s_data)[0]
+    rf_pred = rf_model.predict(s_data)[0]
+    log_pred = log_model.predict(s_data)[0]
+
+    # Majority voting
+    predictions = [svm_pred, rf_pred, log_pred]
+    final_prediction = 1 if sum(predictions) >= 2 else 0  # If at least 2 models predict positive, return 1
+
+    print("\nModel Predictions:")
+    print(f"SVM Prediction: {'Positive' if svm_pred else 'Negative'}")
+    print(f"Random Forest Prediction: {'Positive' if rf_pred else 'Negative'}")
+    print(f"Logistic Regression Prediction: {'Positive' if log_pred else 'Negative'}")
+
+    print("\nFinal Result:", "Positive, Parkinson's Found" if final_prediction else "Negative, No Parkinson's Found")
+
+# Example Input Prompt
+input_data = (
+    139.17300, 179.13900, 76.55600, 0.00390, 0.00003, 0.00165, 0.00208, 0.00496, 0.01642, 0.15400,
+    0.00728, 0.00932, 0.01797, 0.02184, 0.01041, 24.88900, 0.430166, 0.665833, -5.660217,
+    0.254989, 2.519422, 0.199889
+)
+
+# Run prediction
+predict_parkinsons(input_data)
